@@ -1,0 +1,837 @@
+<!DOCTYPE html>
+<html lang="vi">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Love Diary ✨ Huy Thư & Thảo Anh</title>
+  <meta name="description"
+    content="Nhật ký tình yêu lãng mạn pastel hồng của Huy Thư và Thảo Anh. Kỷ niệm từ 26/10/2021.">
+
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link
+    href="https://fonts.googleapis.com/css2?family=Dancing+Script:wght@600;700&family=Nunito:ital,wght@0,400;0,600;0,700;0,800;1,400&family=Playfair+Display:ital,wght@0,600;0,700;1,600&display=swap"
+    rel="stylesheet">
+
+  <!-- Font Awesome Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+
+  <!-- Canvas Confetti -->
+  <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+
+  <!-- Firebase SDK (Optional for multi-device realtime cloud sync) -->
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-database-compat.js"></script>
+
+  <!-- App Styles -->
+  <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+
+  <!-- Floating Falling Background Canvas (Sakura / Hearts) -->
+  <canvas id="fallingCanvas" class="falling-canvas"></canvas>
+
+  <!-- Audio Player Elements -->
+  <audio id="bgmAudioElement" loop preload="auto"></audio>
+  <input type="file" id="directMusicFileInput" accept="audio/*" class="hidden-file-input">
+
+  <div class="audio-control-bar glass-panel-nested" id="audioControlBar">
+    <button id="bgmToggleBtn" class="pill-btn music-btn" title="Bật/Tắt bài hát">
+      <i class="fa-solid fa-play" id="musicPlayIcon"></i>
+      <span id="musicStatusText">Nhạc: Bật</span>
+    </button>
+
+    <!-- Visualizer Wave Animation -->
+    <div class="music-wave-bars hidden" id="musicWaveBars">
+      <span class="bar bar-1"></span>
+      <span class="bar bar-2"></span>
+      <span class="bar bar-3"></span>
+      <span class="bar bar-4"></span>
+    </div>
+
+    <!-- Music Track Info & Upload Button -->
+    <div class="music-track-info" id="musicTrackInfo" title="Bài hát hiện tại">
+      <span id="currentSongTitle" class="song-title-text">Giai điệu tình yêu 💕</span>
+    </div>
+
+    <button id="quickUploadMusicBtn" class="pill-btn upload-music-btn" title="Đổi bài hát / Tải file MP3 của bạn">
+      <i class="fa-solid fa-cloud-arrow-up"></i>
+      <span class="desktop-only">Đổi nhạc MP3</span>
+    </button>
+
+    <!-- Volume slider -->
+    <div class="volume-slider-wrap">
+      <i class="fa-solid fa-volume-low vol-icon"></i>
+      <input type="range" id="bgmVolumeSlider" min="0" max="1" step="0.05" value="0.7" title="Âm lượng nhạc">
+    </div>
+
+    <button id="soundFxBtn" class="pill-btn sound-btn" title="Bật/Tắt hiệu ứng âm thanh click">
+      <i class="fa-solid fa-bell"></i>
+    </button>
+  </div>
+
+  <!-- PASSWORD LOCK OVERLAY -->
+  <div id="lockScreen" class="lock-screen active">
+    <div class="lock-card glass-panel animate-pop">
+      <div class="heart-pulse-icon">
+        <i class="fa-solid fa-heart-lock"></i>
+      </div>
+      <h2 class="lock-title">Love Diary Secret</h2>
+      <p class="lock-desc">Trang nhật ký tình yêu của <strong>Huy Thư ❤️ Thảo Anh</strong>. Hãy nhập mật khẩu bí mật để
+        mở khóa nhé!</p>
+
+      <div class="password-box">
+        <div class="input-with-icon">
+          <i class="fa-solid fa-key input-icon"></i>
+          <input type="password" id="diaryPasswordInput" placeholder="Nhập mật khẩu bí mật (gợi ý: 2610)..." autofocus
+            maxlength="40">
+          <button type="button" id="togglePasswordVisibility" class="icon-btn-ghost" title="Hiện/ẩn mật khẩu">
+            <i class="fa-regular fa-eye"></i>
+          </button>
+        </div>
+        <p id="passwordHint" class="password-hint">Gợi ý: Ngày chúng mình bắt đầu yêu nhau (2610)</p>
+
+        <div class="lock-admin-link-wrap">
+          <button type="button" id="toggleAdminLoginHint" class="admin-hint-toggle-btn">
+            <i class="fa-solid fa-crown highlight-gold"></i> Đăng nhập quyền Chủ nhân (Huy Thư)
+          </button>
+          <div id="adminLoginHintBox" class="admin-hint-box hidden">
+            <i class="fa-solid fa-circle-info"></i> Huy Thư nhập <strong>Mật khẩu Chủ nhân</strong> (mặc định: <code>huythu2610</code>) để có toàn quyền đổi ảnh đại diện và viết nhật ký.
+          </div>
+        </div>
+
+        <button id="unlockBtn" class="btn btn-primary pulse-btn">
+          <i class="fa-solid fa-heart"></i> Mở Cánh Cửa Kỷ Niệm
+        </button>
+      </div>
+
+      <div class="lock-footer">
+        <span class="badge-cute">🎀 Huy Thư & Thảo Anh 🎀</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- MAIN APPLICATION CONTENT -->
+  <div id="appContainer" class="app-container hidden">
+
+    <!-- TOP NAVIGATION BAR -->
+    <header class="top-navbar glass-panel">
+      <div class="nav-brand">
+        <span class="brand-heart">💖</span>
+        <span class="brand-text">Love Diary</span>
+        <span id="viewModeBadge" class="view-mode-badge author-mode">
+          <i class="fa-solid fa-feather-pointed"></i> Chủ nhân
+        </span>
+      </div>
+
+      <div class="nav-actions">
+        <!-- Author Actions -->
+        <div id="authorNavActions" class="nav-action-group">
+          <button id="newEntryBtn" class="btn btn-sm btn-primary">
+            <i class="fa-solid fa-plus"></i> Viết Nhật Ký
+          </button>
+          <button id="shareModalBtn" class="btn btn-sm btn-secondary">
+            <i class="fa-solid fa-share-nodes"></i> Chia Sẻ Link
+          </button>
+          <button id="btnPreviewRecipient" class="btn btn-sm btn-ghost" title="Xem trước giao diện Người nhận (bị khóa đổi ảnh)">
+            <i class="fa-solid fa-eye"></i> <span class="desktop-only">Xem thử</span>
+          </button>
+          <button id="settingsModalBtn" class="btn btn-sm btn-ghost" title="Cài đặt thông tin, ảnh & nhạc">
+            <i class="fa-solid fa-gear"></i>
+          </button>
+        </div>
+
+        <!-- Recipient Action: Heart React & Quick Reply -->
+        <div id="recipientNavActions" class="nav-action-group hidden">
+          <button id="recipientHeartTopBtn" class="btn btn-sm btn-heart-react">
+            <i class="fa-solid fa-heart"></i> Thả Tim (<span class="heart-counter-text">0</span>)
+          </button>
+          <a href="#guestbookSection" class="btn btn-sm btn-secondary">
+            <i class="fa-solid fa-paper-plane"></i> Gửi Lời Nhắn
+          </a>
+          <button id="btnSwitchToAuthor" class="btn btn-sm btn-ghost" title="Đăng nhập quyền Chủ nhân để đổi ảnh & viết nhật ký">
+            <i class="fa-solid fa-crown highlight-gold"></i> <span class="desktop-only">Chủ nhân</span>
+          </button>
+        </div>
+
+        <button id="lockAgainBtn" class="btn btn-sm btn-ghost" title="Khóa lại">
+          <i class="fa-solid fa-lock"></i>
+        </button>
+      </div>
+    </header>
+
+    <!-- HERO / COUPLE COVER HEADER -->
+    <section class="hero-section glass-panel">
+      <!-- Hidden file inputs for quick avatar upload -->
+      <input type="file" id="quickAvatar1Input" accept="image/*" class="hidden-file-input">
+      <input type="file" id="quickAvatar2Input" accept="image/*" class="hidden-file-input">
+
+      <!-- Decorative Stickers on Hero -->
+      <div class="deco-sticker sticker-bow" style="top: 15px; left: 25px;">🎀</div>
+      <div class="deco-sticker sticker-sparkle" style="top: 30px; right: 40px;">✨</div>
+      <div class="deco-sticker sticker-bear" style="bottom: 20px; left: 40px;">🧸</div>
+      <div class="deco-sticker sticker-letter" style="bottom: 25px; right: 35px;">💌</div>
+
+      <div class="couple-avatars-wrap">
+        <div class="avatar-card male-card">
+          <div class="avatar-frame" id="partner1AvatarFrame" title="Bấm vào để đổi ảnh của Huy Thư">
+            <img id="partner1Avatar"
+              src="c:\Users\huyth\Downloads\1792414569119_46333813378713383_4786835911065538541_5b1c783e21022321a2d3d5cdc2e53465.jpg"
+              alt="Huy Thư">
+            <div class="avatar-change-hint"><i class="fa-solid fa-camera"></i> Đổi ảnh</div>
+          </div>
+          <h3 id="partner1Name" class="partner-name"> Huy Thư</h3>
+          <span class="role-tag">Chàng trai ✨</span>
+        </div>
+
+        <div class="love-center-badge">
+          <div class="big-heart-pulsing">
+            <i class="fa-solid fa-heart"></i>
+          </div>
+          <span class="forever-text">Forever & Always</span>
+        </div>
+
+        <div class="avatar-card female-card">
+          <div class="avatar-frame" id="partner2AvatarFrame" title="Bấm vào để đổi ảnh của Thảo Anh">
+            <img id="partner2Avatar"
+              src="c:\Users\huyth\Downloads\1792414560421_46333813378713383_4786835911065538541_5b3fe526531c37959f6e5238d65d538b.jpg"
+              alt="Thảo Anh">
+            <div class="avatar-change-hint"><i class="fa-solid fa-camera"></i> Đổi ảnh</div>
+          </div>
+          <h3 id="partner2Name" class="partner-name">Thảo Anh</h3>
+          <span class="role-tag">Cô gái 🌸</span>
+        </div>
+      </div>
+
+      <h1 id="diaryTitleDisplay" class="diary-main-title">Hành Trình Tình Yêu Của Chúng Mình</h1>
+      <p id="diarySubtitleDisplay" class="diary-subtitle">Mỗi ngày trôi qua đều là một trang nhật ký ngọt ngào có
+        Huy Thư và Thảo Anh.</p>
+
+      <!-- LOVE DAYS COUNTER -->
+      <div class="love-counter-box glass-panel-nested">
+        <div class="counter-header">
+          <i class="fa-solid fa-calendar-heart"></i>
+          <span>Bắt đầu từ ngày: <strong id="startDateText">26-10-2021</strong> (Đến bây giờ)</span>
+        </div>
+        <div class="counter-digits">
+          <div class="digit-box">
+            <span id="daysCount" class="digit-number">0</span>
+            <span class="digit-label">Ngày</span>
+          </div>
+          <span class="digit-separator">:</span>
+          <div class="digit-box">
+            <span id="hoursCount" class="digit-number">00</span>
+            <span class="digit-label">Giờ</span>
+          </div>
+          <span class="digit-separator">:</span>
+          <div class="digit-box">
+            <span id="minutesCount" class="digit-number">00</span>
+            <span class="digit-label">Phút</span>
+          </div>
+          <span class="digit-separator">:</span>
+          <div class="digit-box">
+            <span id="secondsCount" class="digit-number">00</span>
+            <span class="digit-label">Giây</span>
+          </div>
+        </div>
+        <p class="counter-quote" id="loveQuoteDisplay">"Bên em mỗi ngày đều là một ngày đặc biệt."</p>
+      </div>
+
+      <!-- INTERACTIVE LOVE METER / REACTIONS OVERVIEW -->
+      <div class="hero-stats-row">
+        <div class="stat-pill">
+          <i class="fa-solid fa-book-heart"></i>
+          <span>Kỷ niệm: <strong id="totalMemoriesCount">0</strong></span>
+        </div>
+        <div class="stat-pill heart-stat-pill" id="triggerBigHeartBurst">
+          <i class="fa-solid fa-heart"></i>
+          <span>Tổng số tim: <strong id="totalHeartsDisplay">128</strong></span>
+        </div>
+        <div class="stat-pill">
+          <i class="fa-solid fa-envelope-open-text"></i>
+          <span>Lời nhắn: <strong id="totalMessagesDisplay">0</strong></span>
+        </div>
+      </div>
+    </section>
+
+    <!-- STICKER DECORATION BAR -->
+    <div class="sticker-shelf glass-panel">
+      <div class="sticker-shelf-title">
+        <span>✨ Góc Dán Sticker Yêu Thương (Bấm sticker để bắn pháo hoa dễ thương):</span>
+      </div>
+      <div class="sticker-items" id="stickerBarItems">
+        <button class="sticker-btn" data-emoji="💖" title="Trái tim lấp lánh">💖</button>
+        <button class="sticker-btn" data-emoji="🌸" title="Hoa anh đào">🌸</button>
+        <button class="sticker-btn" data-emoji="🧸" title="Gấu bông">🧸</button>
+        <button class="sticker-btn" data-emoji="💌" title="Thư tình">💌</button>
+        <button class="sticker-btn" data-emoji="🎀" title="Nơ hồng">🎀</button>
+        <button class="sticker-btn" data-emoji="🍓" title="Dâu tây ngọt ngào">🍓</button>
+        <button class="sticker-btn" data-emoji="🐱" title="Mèo cưng">🐱</button>
+        <button class="sticker-btn" data-emoji="🍰" title="Bánh kem">🍰</button>
+        <button class="sticker-btn" data-emoji="🕊️" title="Bồ câu hòa bình">🕊️</button>
+        <button class="sticker-btn" data-emoji="✨" title="Ngôi sao ước nguyện">✨</button>
+      </div>
+    </div>
+
+    <!-- MAIN CONTENT LAYOUT -->
+    <main class="content-layout">
+
+      <!-- LEFT/CENTER: TIMELINE DIARY ENTRIES -->
+      <section class="diary-timeline-section">
+        <div class="section-header-row">
+          <div class="section-title-wrap">
+            <span class="section-subtitle">Chương sách kỷ niệm</span>
+            <h2 class="section-title">Nhật Ký Tình Yêu</h2>
+          </div>
+
+          <div class="timeline-filters">
+            <button class="filter-pill active" data-filter="all">Tất cả</button>
+            <button class="filter-pill" data-filter="sweet">Ngọt ngào 🍬</button>
+            <button class="filter-pill" data-filter="travel">Đi chơi ✈️</button>
+            <button class="filter-pill" data-filter="anniversary">Kỷ niệm 💍</button>
+          </div>
+        </div>
+
+        <!-- Entries Feed Container -->
+        <div id="diaryFeedContainer" class="diary-feed">
+          <!-- Dynamic Diary Cards will be rendered here -->
+        </div>
+
+        <!-- Empty State -->
+        <div id="emptyDiaryState" class="empty-state glass-panel hidden">
+          <div class="empty-icon">📖💖</div>
+          <h3>Chưa có bài viết nào!</h3>
+          <p>Hãy bắt đầu viết trang đầu tiên của cuốn nhật ký bằng nút bên dưới.</p>
+          <button id="emptyStateAddBtn" class="btn btn-primary">
+            <i class="fa-solid fa-feather-pointed"></i> Thêm Kỷ Niệm Đầu Tiên
+          </button>
+        </div>
+      </section>
+
+      <!-- RIGHT SIDEBAR: RECIPIENT INTERACTION (REACTIONS & GUESTBOOK) -->
+      <aside class="interaction-sidebar">
+
+        <!-- QUICK LOVE REACTION CARD -->
+        <div class="action-card glass-panel text-center">
+          <div class="card-badge">Tương tác trực tiếp</div>
+          <h3 class="card-title">Gửi Tim Cho Đối Phương</h3>
+          <p class="card-desc">Cảm thấy rung động với những kỷ niệm này? Hãy nhấn nút thả tim thật nhiều nhé!</p>
+
+          <div class="big-interactive-heart-wrap">
+            <button id="floatingHeartActionBtn" class="big-heart-react-btn" title="Bấm liên tục để thả tim!">
+              <i class="fa-solid fa-heart"></i>
+              <span class="burst-text">+1 Tim</span>
+            </button>
+          </div>
+          <div class="heart-stats-display">
+            Đã gửi <strong id="sidebarHeartCounter" class="highlight-pink">0</strong> nhịp đập yêu thương 💕
+          </div>
+        </div>
+
+        <!-- GUESTBOOK / RECIPIENT REPLIES SECTION -->
+        <div id="guestbookSection" class="guestbook-card glass-panel">
+          <div class="guestbook-header">
+            <div class="guestbook-title-wrap">
+              <i class="fa-solid fa-comments-heart highlight-pink"></i>
+              <h3>Phản Hồi & Lời Nhắn</h3>
+            </div>
+            <span id="messagesCountBadge" class="badge-count">0</span>
+          </div>
+
+          <p class="guestbook-desc">Người nhận có thể để lại lời chúc, tâm sự hoặc phản hồi ngọt ngào tại đây.</p>
+
+          <!-- Reply Submission Form -->
+          <form id="replyForm" class="reply-form">
+            <div class="form-group">
+              <label for="senderNameInput">Tên hoặc biệt danh của bạn:</label>
+              <div class="input-with-icon">
+                <i class="fa-solid fa-signature input-icon"></i>
+                <input type="text" id="senderNameInput" placeholder="Ví dụ: Thảo Anh,Huy Thư..." required
+                  maxlength="30">
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label for="senderMessageInput">Lời nhắn yêu thương:</label>
+              <textarea id="senderMessageInput" rows="3" placeholder="Nhập những lời ngọt ngào muốn nhắn gửi..."
+                required maxlength="400"></textarea>
+            </div>
+
+            <div class="form-group">
+              <label>Chọn sticker cảm xúc:</label>
+              <div class="sticker-selector" id="feedbackStickerSelector">
+                <label class="sticker-radio">
+                  <input type="radio" name="replySticker" value="💖" checked>
+                  <span>💖</span>
+                </label>
+                <label class="sticker-radio">
+                  <input type="radio" name="replySticker" value="🥰">
+                  <span>🥰</span>
+                </label>
+                <label class="sticker-radio">
+                  <input type="radio" name="replySticker" value="🌸">
+                  <span>🌸</span>
+                </label>
+                <label class="sticker-radio">
+                  <input type="radio" name="replySticker" value="💌">
+                  <span>💌</span>
+                </label>
+                <label class="sticker-radio">
+                  <input type="radio" name="replySticker" value="🥺">
+                  <span>🥺</span>
+                </label>
+                <label class="sticker-radio">
+                  <input type="radio" name="replySticker" value="✨">
+                  <span>✨</span>
+                </label>
+              </div>
+            </div>
+
+            <button type="submit" id="sendReplyBtn" class="btn btn-primary btn-block">
+              <i class="fa-solid fa-paper-plane"></i> Gửi Ngay Cho Bạn Ấy
+            </button>
+          </form>
+
+          <!-- List of Messages -->
+          <div class="replies-list" id="repliesListContainer">
+            <!-- Dynamic feedback cards inserted here -->
+          </div>
+        </div>
+
+        <!-- SHARE TIP CARD -->
+        <div class="tip-card glass-panel">
+          <div class="tip-icon">🔐</div>
+          <div class="tip-content">
+            <h4>Bảo mật & Bền vững</h4>
+            <p>Mật khẩu bảo vệ ngăn người lạ đọc trộm. Toàn bộ hình ảnh, âm nhạc và bài viết được lưu trữ an toàn.</p>
+          </div>
+        </div>
+
+      </aside>
+
+    </main>
+
+    <!-- FOOTER -->
+    <footer class="app-footer text-center">
+      <p>Made with all my heart 💖 <span id="footerCoupleName">Huy Thư & Thảo Anh</span></p>
+      <p class="footer-subtext">Love Diary • Khoảnh khắc bên nhau từ 26/10/2021 là mãi mãi</p>
+    </footer>
+
+  </div>
+
+  <!-- FLOATING BOTTOM ACTION (FOR MOBILE) -->
+  <div class="floating-mobile-heart-btn" id="mobileHeartBtn" title="Thả tim">
+    <i class="fa-solid fa-heart"></i>
+  </div>
+
+  <!-- ================= MODALS ================= -->
+
+  <!-- 1. WRITE / EDIT ENTRY MODAL -->
+  <div id="entryModal" class="modal-backdrop">
+    <div class="modal-dialog glass-panel animate-pop">
+      <div class="modal-header">
+        <h3 id="entryModalTitle" class="modal-title">
+          <i class="fa-solid fa-feather-pointed highlight-pink"></i> Viết Trang Nhật Ký Mới
+        </h3>
+        <button class="close-modal-btn" data-close="entryModal">&times;</button>
+      </div>
+      <form id="entryForm" class="modal-body">
+        <input type="hidden" id="entryIdInput">
+
+        <div class="form-row">
+          <div class="form-group flex-1">
+            <label for="entryTitleInput">Tiêu đề kỷ niệm *</label>
+            <input type="text" id="entryTitleInput" placeholder="Ví dụ: Buổi hẹn hò đầu tiên dưới mưa..." required
+              maxlength="100">
+          </div>
+          <div class="form-group" style="width: 170px;">
+            <label for="entryDateInput">Ngày kỷ niệm *</label>
+            <input type="date" id="entryDateInput" required>
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group flex-1">
+            <label for="entryLocationInput">Địa điểm</label>
+            <div class="input-with-icon">
+              <i class="fa-solid fa-location-dot input-icon"></i>
+              <input type="text" id="entryLocationInput" placeholder="Ví dụ: Hồ Tây, Hà Nội">
+            </div>
+          </div>
+          <div class="form-group" style="width: 180px;">
+            <label for="entryCategoryInput">Chủ đề</label>
+            <select id="entryCategoryInput">
+              <option value="sweet">Ngọt ngào 🍬</option>
+              <option value="travel">Đi chơi ✈️</option>
+              <option value="anniversary">Kỷ niệm 💍</option>
+              <option value="daily">Đời thường 🌸</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- PHOTO UPLOAD & PREVIEW -->
+        <div class="form-group">
+          <label>Hình ảnh kỷ niệm (Polaroid Photo)</label>
+          <div class="image-uploader-box" id="imageUploaderBox">
+            <input type="file" id="entryImageFile" accept="image/*" class="hidden-file-input">
+            <div class="uploader-prompt" id="uploaderPrompt">
+              <i class="fa-solid fa-cloud-arrow-up highlight-pink"></i>
+              <p>Bấm để tải ảnh lên hoặc kéo thả vào đây</p>
+              <span class="upload-note">(Tự động tối ưu dung lượng cho ảnh sắc nét)</span>
+            </div>
+            <div class="image-preview-wrap hidden" id="imagePreviewWrap">
+              <img id="imagePreviewImg" src="" alt="Preview">
+              <button type="button" id="removePreviewImgBtn" class="btn-remove-preview" title="Xóa ảnh">&times;</button>
+            </div>
+          </div>
+          <div class="url-input-fallback">
+            <small>Hoặc dán URL ảnh trực tiếp:</small>
+            <input type="url" id="entryImageUrlInput" placeholder="https://example.com/photo.jpg">
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="entryContentInput">Nội dung nhật ký *</label>
+          <textarea id="entryContentInput" rows="6"
+            placeholder="Kể lại cảm xúc, kỷ niệm và những điều tuyệt vời của ngày hôm ấy..." required></textarea>
+        </div>
+
+        <div class="form-group">
+          <label>Sticker trang trí thẻ:</label>
+          <div class="sticker-selector" id="entryCardStickerSelector">
+            <label class="sticker-radio"><input type="radio" name="entrySticker" value="💖"
+                checked><span>💖</span></label>
+            <label class="sticker-radio"><input type="radio" name="entrySticker" value="🌸"><span>🌸</span></label>
+            <label class="sticker-radio"><input type="radio" name="entrySticker" value="🎀"><span>🎀</span></label>
+            <label class="sticker-radio"><input type="radio" name="entrySticker" value="🧸"><span>🧸</span></label>
+            <label class="sticker-radio"><input type="radio" name="entrySticker" value="💌"><span>💌</span></label>
+            <label class="sticker-radio"><input type="radio" name="entrySticker" value="🍓"><span>🍓</span></label>
+            <label class="sticker-radio"><input type="radio" name="entrySticker" value="✨"><span>✨</span></label>
+          </div>
+        </div>
+
+        <div class="modal-footer">
+          <button type="button" class="btn btn-ghost" data-close="entryModal">Hủy</button>
+          <button type="submit" class="btn btn-primary">
+            <i class="fa-solid fa-cloud-check"></i> Lưu Kỷ Niệm
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- 2. SHARE LINK & PERMISSIONS MODAL -->
+  <div id="shareModal" class="modal-backdrop">
+    <div class="modal-dialog glass-panel animate-pop">
+      <div class="modal-header">
+        <h3 class="modal-title">
+          <i class="fa-solid fa-share-nodes highlight-pink"></i> Chia Sẻ Nhật Ký Với Người Ấy
+        </h3>
+        <button class="close-modal-btn" data-close="shareModal">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="share-info-card">
+          <div class="badge-pill">Quyền truy cập an toàn</div>
+          <h4>Link bảo vệ bằng mật khẩu</h4>
+          <p>Người nhận khi bấm vào link này sẽ chỉ xem được nội dung sau khi nhập đúng <strong>Mật khẩu bí mật</strong>
+            mà bạn đã cài đặt.</p>
+        </div>
+
+        <div class="form-group">
+          <label>Link chia sẻ dành cho Người Nhận:</label>
+          <div class="copy-input-row">
+            <input type="text" id="shareLinkInput" readonly class="share-url-field">
+            <button id="copyShareLinkBtn" class="btn btn-primary">
+              <i class="fa-solid fa-copy"></i> Sao chép
+            </button>
+          </div>
+          <span id="copySuccessMsg" class="copy-success-hint hidden">
+            <i class="fa-solid fa-circle-check"></i> Đã sao chép link vào bộ nhớ tạm!
+          </span>
+        </div>
+
+        <div class="security-summary-box">
+          <div class="summary-item">
+            <i class="fa-solid fa-shield-heart highlight-pink"></i>
+            <div>
+              <strong>Mật khẩu Người nhận:</strong>
+              <span id="shareModalCurrentPassword" class="password-highlight">••••••</span>
+            </div>
+          </div>
+          <div class="summary-item">
+            <i class="fa-solid fa-lock highlight-pink"></i>
+            <div>
+              <strong>Bảo mật ảnh & nhật ký:</strong>
+              <span>Người nhận chỉ có thể ngắm ảnh, thả tim, gửi lời nhắn. Toàn bộ quyền đổi ảnh đại diện (avatar) và ảnh nhật ký đều bị khóa chặt chẽ.</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="share-cloud-sync-tip">
+          <i class="fa-solid fa-cloud"></i>
+          <p><strong>Lưu ý đồng bộ:</strong> Khi triển khai online với Firebase, tim và lời nhắn của người nhận sẽ tự
+            động gửi về điện thoại/máy tính của bạn tức thì!</p>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-primary btn-block" data-close="shareModal">Đã hiểu & Đóng</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 3. SETTINGS & PASSWORD CONFIG MODAL -->
+  <div id="settingsModal" class="modal-backdrop">
+    <div class="modal-dialog modal-dialog-lg glass-panel animate-pop">
+      <div class="modal-header">
+        <h3 class="modal-title">
+          <i class="fa-solid fa-gear highlight-pink"></i> Cài Đặt Nhật Ký, Ảnh & Nhạc
+        </h3>
+        <button class="close-modal-btn" data-close="settingsModal">&times;</button>
+      </div>
+      <form id="settingsForm" class="modal-body">
+
+        <h4 class="settings-subheading">1. Thông tin đôi bạn & Ảnh đại diện</h4>
+        <div class="form-row">
+          <div class="form-group flex-1">
+            <label for="cfgPartner1Name">Tên bạn trai / Bạn 1</label>
+            <input type="text" id="cfgPartner1Name" value="Huy Thư" required>
+          </div>
+          <div class="form-group flex-1">
+            <label for="cfgPartner2Name">Tên bạn gái / Bạn 2</label>
+            <input type="text" id="cfgPartner2Name" value="Thảo Anh" required>
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group flex-1">
+            <label for="cfgStartDate">Ngày bắt đầu yêu *</label>
+            <input type="date" id="cfgStartDate" value="2021-10-26" required>
+          </div>
+          <div class="form-group flex-1">
+            <label for="cfgLoveQuote">Câu châm ngôn tình yêu</label>
+            <input type="text" id="cfgLoveQuote" value="Bên em mỗi ngày đều là một ngày đặc biệt.">
+          </div>
+        </div>
+
+        <!-- AVATAR UPLOADERS -->
+        <div class="form-row">
+          <div class="form-group flex-1">
+            <label>Ảnh đại diện Huy Thư:</label>
+            <div class="avatar-uploader-row">
+              <div class="mini-avatar-preview">
+                <img id="previewAvatar1Img"
+                  src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=400&q=80"
+                  alt="Avatar 1">
+              </div>
+              <div class="uploader-buttons flex-1">
+                <input type="file" id="cfgPartner1AvatarFile" accept="image/*" class="hidden-file-input">
+                <button type="button" id="btnUploadAvatar1" class="btn btn-sm btn-secondary">
+                  <i class="fa-solid fa-image"></i> Tải ảnh từ máy
+                </button>
+                <input type="url" id="cfgPartner1Avatar" placeholder="Hoặc dán URL ảnh...">
+              </div>
+            </div>
+          </div>
+
+          <div class="form-group flex-1">
+            <label>Ảnh đại diện Thảo Anh:</label>
+            <div class="avatar-uploader-row">
+              <div class="mini-avatar-preview">
+                <img id="previewAvatar2Img"
+                  src="https://images.unsplash.com/photo-1517841905240-472988babdf9?auto=format&fit=crop&w=400&q=80"
+                  alt="Avatar 2">
+              </div>
+              <div class="uploader-buttons flex-1">
+                <input type="file" id="cfgPartner2AvatarFile" accept="image/*" class="hidden-file-input">
+                <button type="button" id="btnUploadAvatar2" class="btn btn-sm btn-secondary">
+                  <i class="fa-solid fa-image"></i> Tải ảnh từ máy
+                </button>
+                <input type="url" id="cfgPartner2Avatar" placeholder="Hoặc dán URL ảnh...">
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <h4 class="settings-subheading">2. Nhạc nền của chúng mình (Thêm nhạc của tôi)</h4>
+        <div class="music-config-box glass-panel-nested">
+          <p class="small-text">Bạn có thể chọn file nhạc từ máy tính hoặc dán link bài hát online. Website sẽ tự động
+            phát nhạc khi mở trang:</p>
+
+          <div class="music-upload-row">
+            <input type="file" id="cfgMusicFileInput" accept="audio/*" class="hidden-file-input">
+            <button type="button" id="btnPickMusicFile" class="btn btn-secondary">
+              <i class="fa-solid fa-file-audio"></i> Chọn file nhạc từ máy tính (.mp3, .wav, .m4a)
+            </button>
+            <button type="button" id="btnRemoveCustomMusic" class="btn btn-sm btn-ghost hidden"
+              title="Xóa nhạc tùy chỉnh">
+              <i class="fa-solid fa-trash"></i> Dùng lại nhạc mặc định
+            </button>
+          </div>
+
+          <div class="form-group" style="margin-top: 12px; margin-bottom: 6px;">
+            <label for="cfgMusicUrl">Hoặc dán liên kết file nhạc MP3 (URL trực tiếp):</label>
+            <input type="url" id="cfgMusicUrl" placeholder="https://example.com/bai-hat-cua-chung-minh.mp3">
+          </div>
+
+          <div class="current-music-status" id="currentMusicStatus">
+            <i class="fa-solid fa-music highlight-pink"></i> Đang dùng: <strong id="currentMusicNameDisplay">Nhạc Lofi
+              Piano êm dịu</strong>
+          </div>
+          <small class="tip-text">💡 <em>Mẹo:</em> Bạn cũng có thể copy bài hát của mình vào thư mục dự án và đặt tên là
+            <code>nhac.mp3</code>, web sẽ tự nhận ngay!</small>
+        </div>
+
+        <h4 class="settings-subheading">3. Bảo mật & Phân quyền chỉnh sửa ảnh</h4>
+        <div class="settings-security-notice glass-panel-nested">
+          <div class="sec-notice-icon"><i class="fa-solid fa-shield-cat"></i></div>
+          <div class="sec-notice-text">
+            <strong>Cơ chế bảo vệ: Chỉ có Huy Thư mới đổi được ảnh!</strong><br>
+            • <strong>Mật khẩu Người nhận (Chỉ xem):</strong> Dành gửi cho người yêu. Chỉ xem ảnh, thả tim, gửi lời nhắn. Bị <u>khóa hoàn toàn</u> chức năng đổi ảnh đại diện và ảnh bài viết.<br>
+            • <strong>Mật khẩu Chủ nhân:</strong> Dành riêng cho Huy Thư để mở toàn quyền đổi ảnh và viết nhật ký.
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group flex-1">
+            <label for="cfgPassword"><i class="fa-solid fa-user-lock"></i> Mật khẩu Người nhận (Chỉ xem) *</label>
+            <input type="text" id="cfgPassword" required value="2610" placeholder="Ví dụ: 2610">
+          </div>
+          <div class="form-group flex-1">
+            <label for="cfgHint">Gợi ý mật khẩu Người nhận</label>
+            <input type="text" id="cfgHint" value="Ngày chúng mình bắt đầu yêu nhau (2610)"
+              placeholder="Ví dụ: Ngày chúng mình bắt đầu yêu">
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group flex-1">
+            <label for="cfgAdminPassword"><i class="fa-solid fa-crown highlight-gold"></i> Mật khẩu Chủ nhân (Đổi ảnh & Quản lý) *</label>
+            <input type="text" id="cfgAdminPassword" required value="huythu2610" placeholder="Ví dụ: huythu2610">
+          </div>
+          <div class="form-group flex-1">
+            <label for="cfgAdminHint">Gợi ý mật khẩu Chủ nhân</label>
+            <input type="text" id="cfgAdminHint" value="Mật khẩu riêng của Huy Thư (huythu2610)"
+              placeholder="Gợi ý riêng cho bạn">
+          </div>
+        </div>
+
+        <h4 class="settings-subheading">4. Sao lưu & Đồng bộ đám mây (Firebase)</h4>
+        <div class="cloud-cfg-box">
+          <p class="small-text">Dán mã cấu hình Firebase Realtime Database nếu muốn tim & lời nhắn của người yêu tự động
+            đồng bộ qua internet:</p>
+          <textarea id="cfgFirebaseJson" rows="3"
+            placeholder='{"apiKey": "...", "databaseURL": "...", "projectId": "..."}'></textarea>
+        </div>
+
+        <div class="backup-actions-row">
+          <button type="button" id="exportDataBtn" class="btn btn-sm btn-ghost">
+            <i class="fa-solid fa-file-export"></i> Tải file sao lưu (JSON)
+          </button>
+          <label class="btn btn-sm btn-ghost" style="cursor: pointer;">
+            <i class="fa-solid fa-file-import"></i> Phục hồi dữ liệu
+            <input type="file" id="importDataFile" accept=".json" class="hidden-file-input">
+          </label>
+        </div>
+
+        <div class="modal-footer">
+          <button type="button" class="btn btn-ghost" data-close="settingsModal">Hủy</button>
+          <button type="submit" class="btn btn-primary">
+            <i class="fa-solid fa-check"></i> Lưu Cài Đặt
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- 4. DIARY FULL DETAIL VIEW MODAL -->
+  <div id="detailModal" class="modal-backdrop">
+    <div class="modal-dialog modal-dialog-lg glass-panel animate-pop">
+      <div class="modal-header">
+        <div class="detail-badge-wrap">
+          <span id="detailCategoryBadge" class="badge-cute">💖 Ngọt ngào</span>
+          <span id="detailDateBadge" class="badge-date">26-10-2021</span>
+        </div>
+        <button class="close-modal-btn" data-close="detailModal">&times;</button>
+      </div>
+      <div class="modal-body">
+        <h2 id="detailTitle" class="detail-heading">Tiêu đề kỷ niệm</h2>
+        <div id="detailLocationWrap" class="detail-location-tag">
+          <i class="fa-solid fa-location-dot highlight-pink"></i> <span id="detailLocation">Hà Nội</span>
+        </div>
+
+        <div id="detailImageContainer" class="detail-image-box">
+          <img id="detailImg" src="" alt="Kỷ niệm">
+        </div>
+
+        <div id="detailContent" class="detail-text-body">
+          <!-- Text rendered here -->
+        </div>
+
+        <!-- Detail Card Footer Actions -->
+        <div class="detail-footer-actions">
+          <button id="detailHeartBtn" class="btn btn-heart-react">
+            <i class="fa-solid fa-heart"></i> Thả Tim (<span id="detailHeartCount">0</span>)
+          </button>
+          <button type="button" class="btn btn-ghost" data-close="detailModal">Đóng</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 5. AVATAR ZOOM & PREVIEW MODAL -->
+  <div id="avatarZoomModal" class="modal-backdrop">
+    <div class="modal-dialog modal-dialog-sm glass-panel animate-pop text-center">
+      <div class="modal-header">
+        <h3 class="modal-title" id="avatarZoomTitle">
+          <i class="fa-solid fa-heart highlight-pink"></i> Ảnh Kỷ Niệm
+        </h3>
+        <button class="close-modal-btn" data-close="avatarZoomModal">&times;</button>
+      </div>
+      <div class="modal-body avatar-zoom-body">
+        <div class="avatar-zoom-frame">
+          <img id="avatarZoomImg" src="" alt="Avatar Zoom">
+        </div>
+        <p id="avatarZoomCaption" class="avatar-zoom-caption"></p>
+        <div id="avatarZoomActions" class="avatar-zoom-actions"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 6. AUTHOR AUTHENTICATION MODAL -->
+  <div id="authorAuthModal" class="modal-backdrop">
+    <div class="modal-dialog modal-dialog-sm glass-panel animate-pop">
+      <div class="modal-header">
+        <h3 class="modal-title">
+          <i class="fa-solid fa-crown highlight-gold"></i> Xác Nhận Quyền Chủ Nhân
+        </h3>
+        <button class="close-modal-btn" data-close="authorAuthModal">&times;</button>
+      </div>
+      <form id="authorAuthForm" class="modal-body">
+        <p class="small-text" style="margin-bottom: 14px;">
+          Nhập <strong>Mật khẩu Chủ nhân</strong> để mở quyền đổi ảnh đại diện, viết nhật ký và cài đặt:
+        </p>
+        <div class="input-with-icon">
+          <i class="fa-solid fa-key input-icon"></i>
+          <input type="password" id="authorAuthPasswordInput" placeholder="Nhập mật khẩu chủ nhân..." required autofocus>
+        </div>
+        <p class="password-hint" id="authorAuthHint" style="margin-top: 8px;">Gợi ý: Mật khẩu riêng của Huy Thư (huythu2610)</p>
+        <div class="modal-footer" style="padding: 12px 0 0; margin-top: 14px;">
+          <button type="button" class="btn btn-ghost" data-close="authorAuthModal">Hủy</button>
+          <button type="submit" class="btn btn-primary">
+            <i class="fa-solid fa-unlock-keyhole"></i> Xác Nhận
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- TOAST NOTIFICATION CONTAINER -->
+  <div id="toastContainer" class="toast-container"></div>
+
+  <!-- Scripts -->
+  <script src="firebase-config.js"></script>
+  <script src="app.js"></script>
+</body>
+
+</html>
